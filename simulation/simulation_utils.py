@@ -1,5 +1,6 @@
 """
 Utility functions for simulation studies.
+Optimized with better parallelization and batch processing.
 """
 
 import numpy as np
@@ -100,7 +101,7 @@ def run_bic_selection(X: np.ndarray,
         random_state=random_state
     )
     
-    selector.fit(X, verbose=False, parallel_K=False)
+    selector.fit(X, verbose=False, parallel_strategy='within_K')
     
     computation_time = time.time() - start_time
     
@@ -337,6 +338,73 @@ def run_single_estimation_simulation(sim_id: int,
     }
     
     return result
+
+
+def run_batch_bic_simulations(sim_ids: List[int],
+                              n: int,
+                              K_true: int,
+                              m: int,
+                              C: int,
+                              K_range: List[int],
+                              max_iter: int,
+                              tol: float,
+                              n_init: int,
+                              base_seed: int) -> List[Dict]:
+    """
+    Run a batch of BIC simulations to reduce overhead.
+    
+    Parameters
+    ----------
+    sim_ids : list of int
+        List of simulation indices to run in this batch
+    (other parameters same as run_single_bic_simulation)
+        
+    Returns
+    -------
+    results : list of dict
+        List of simulation results
+    """
+    results = []
+    for sim_id in sim_ids:
+        result = run_single_bic_simulation(
+            sim_id, n, K_true, m, C, K_range, 
+            max_iter, tol, n_init, base_seed
+        )
+        results.append(result)
+    return results
+
+
+def run_batch_estimation_simulations(sim_ids: List[int],
+                                     n: int,
+                                     K_true: int,
+                                     m: int,
+                                     C: int,
+                                     max_iter: int,
+                                     tol: float,
+                                     n_init: int,
+                                     base_seed: int) -> List[Dict]:
+    """
+    Run a batch of parameter estimation simulations to reduce overhead.
+    
+    Parameters
+    ----------
+    sim_ids : list of int
+        List of simulation indices to run in this batch
+    (other parameters same as run_single_estimation_simulation)
+        
+    Returns
+    -------
+    results : list of dict
+        List of simulation results
+    """
+    results = []
+    for sim_id in sim_ids:
+        result = run_single_estimation_simulation(
+            sim_id, n, K_true, m, C, 
+            max_iter, tol, n_init, base_seed
+        )
+        results.append(result)
+    return results
 
 
 def aggregate_bic_results(results_list: List[Dict]) -> Dict:

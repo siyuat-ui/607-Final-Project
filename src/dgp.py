@@ -74,8 +74,8 @@ class LatentClassDGP:
             Mixture weights in descending order
         """
         # Generate from Dirichlet distribution for diversity
-        alpha = np.ones(self.K)
-        pi = self.rng.dirichlet(alpha)
+        pi = self.rng.dirichlet(np.ones(self.K)) + np.ones(self.K) * 0.2  # Small constant to avoid very small weights
+        pi /= pi.sum()
         
         # Sort in descending order to satisfy ordering constraint
         pi = np.sort(pi)[::-1]

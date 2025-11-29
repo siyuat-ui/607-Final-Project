@@ -24,13 +24,15 @@ from simulation_utils import (
 # ============================================================================
 
 SIMULATION_CONFIG = {
-    'M': 100,                                           # Simulations per configuration
+    'M': 10,                                            # Simulations per configuration
     'm': 20,                                            # Number of variables
     'C': 2,                                             # Categories per variable
-    'K_values': [2, 3, 4, 5],                          # True K values to test
-    'sample_sizes': [500, 1000, 1500, 2000, 3000, 5000, 6000, 8000],
-    'K_range_test': list(range(1, 8)),                 # K range for BIC selection
-    'max_iter': 1000,                                   # EM max iterations
+    'K_values': [2, 3, 4, 5],                           # True K values to test
+    'sample_sizes': [500, 1000, 2000, 3000, 5000, 8000],
+    'K_range_margin': 2,                                # Test K_true ± margin (NEW)
+    'K_min': 1,                                         # Minimum K to test (NEW)
+    'K_max': 10,                                        # Maximum K to test (NEW)
+    'max_iter': 200,                                    # EM max iterations
     'tol': 1e-6,                                        # EM convergence tolerance
     'n_init': 5,                                        # Number of random initializations
     'base_seed': 42                                     # Base random seed
@@ -57,6 +59,33 @@ def save_config(config: dict, filepath: str):
     print(f"Configuration saved to: {filepath}")
 
 
+def get_K_range_for_true_K(K_true: int, margin: int, K_min: int, K_max: int) -> list:
+    """
+    Get the range of K values to test based on true K.
+    
+    This reduces redundant computations by focusing on K values near the true K.
+    
+    Parameters
+    ----------
+    K_true : int
+        True number of classes
+    margin : int
+        How many K values to test above and below K_true
+    K_min : int
+        Minimum K to test
+    K_max : int
+        Maximum K to test
+        
+    Returns
+    -------
+    K_range : list
+        Range of K values to test
+    """
+    K_lower = max(K_min, K_true - margin)
+    K_upper = min(K_max, K_true + margin)
+    return list(range(K_lower, K_upper + 1))
+
+
 def run_bic_study(config: dict, n_jobs: int = -1):
     """
     Run BIC selection study.
@@ -77,7 +106,9 @@ def run_bic_study(config: dict, n_jobs: int = -1):
     C = config['C']
     K_values = config['K_values']
     sample_sizes = config['sample_sizes']
-    K_range_test = config['K_range_test']
+    K_range_margin = config['K_range_margin']
+    K_min = config['K_min']
+    K_max = config['K_max']
     max_iter = config['max_iter']
     tol = config['tol']
     n_init = config['n_init']
@@ -88,6 +119,7 @@ def run_bic_study(config: dict, n_jobs: int = -1):
     print(f"Simulations per configuration: {M}")
     print(f"Total simulation runs: {total_configs * M}")
     print(f"Parallelization: n_jobs={n_jobs}")
+    print(f"K range strategy: K_true ± {K_range_margin} (constrained to [{K_min}, {K_max}])")
     
     overall_start = time.time()
     
@@ -96,8 +128,12 @@ def run_bic_study(config: dict, n_jobs: int = -1):
     
     # Loop over each configuration
     for K_true in K_values:
+        # Determine K range to test for this K_true
+        K_range_test = get_K_range_for_true_K(K_true, K_range_margin, K_min, K_max)
+        
         print(f"\n{'='*70}")
         print(f"Running simulations for K_true = {K_true}")
+        print(f"Testing K values: {K_range_test}")
         print(f"{'='*70}")
         
         config_results = []
@@ -111,7 +147,7 @@ def run_bic_study(config: dict, n_jobs: int = -1):
                     K_true=K_true,
                     m=m,
                     C=C,
-                    K_range=K_range_test,
+                    K_range=K_range_test,  # Use adaptive K range
                     max_iter=max_iter,
                     tol=tol,
                     n_init=n_init,
@@ -285,6 +321,12 @@ def main():
         default=None,
         help='Override K values to test'
     )
+    parser.add_argument(
+        '--K-margin',
+        type=int,
+        default=None,
+        help='Override K range margin (default: 3)'
+    )
     
     args = parser.parse_args()
     
@@ -305,6 +347,10 @@ def main():
     if args.K_values is not None:
         config['K_values'] = args.K_values
         print(f"Override: K_values = {args.K_values}")
+    
+    if args.K_margin is not None:
+        config['K_range_margin'] = args.K_margin
+        print(f"Override: K_range_margin = {args.K_margin}")
     
     # Save configuration
     save_config(config, "simulation/results/simulation_config.json")

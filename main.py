@@ -115,7 +115,7 @@ def run_analysis(data_path: str,
         random_state=random_state
     )
     
-    selector.fit(X, verbose=True, parallel_K=True)
+    selector.fit(X, verbose=True, parallel_strategy='auto')
     
     best_K = selector.best_K
     bic_results = selector.get_all_results()
@@ -299,7 +299,7 @@ def generate_and_analyze_synthetic_data(n_samples: int = 1000,
         random_state=random_state
     )
     
-    # Additional validation for synthetic data
+# Additional validation for synthetic data
     print("\n" + "="*70)
     print("VALIDATION (Synthetic Data)")
     print("="*70)
@@ -312,23 +312,23 @@ def generate_and_analyze_synthetic_data(n_samples: int = 1000,
     else:
         print(f"✗ Selected K={selector.best_K}, True K={K_true}")
     
-    # Compare mixture weights
-    estimated_pi = best_model_params['pi']
-    pi_mae = np.mean(np.abs(estimated_pi - true_params['pi']))
-    pi_rmse = np.sqrt(np.mean((estimated_pi - true_params['pi'])**2))
-    
-    print(f"\nMixture Weights:")
-    print(f"  True π:      {np.array2string(true_params['pi'], precision=4, suppress_small=True)}")
-    print(f"  Estimated π: {np.array2string(estimated_pi, precision=4, suppress_small=True)}")
-    print(f"  Mean Absolute Error (MAE):  {pi_mae:.6f}")
-    print(f"  Root Mean Squared Error (RMSE): {pi_rmse:.6f}")
-    
-    # Compare categorical probabilities (theta)
-    estimated_theta = best_model_params['theta']
-    true_theta = true_params['theta']
-    
-    # Only compare if K matches
+    # Only compare parameters if K matches
     if selector.best_K == K_true:
+        # Compare mixture weights
+        estimated_pi = best_model_params['pi']
+        pi_mae = np.mean(np.abs(estimated_pi - true_params['pi']))
+        pi_rmse = np.sqrt(np.mean((estimated_pi - true_params['pi'])**2))
+        
+        print(f"\nMixture Weights:")
+        print(f"  True π:      {np.array2string(true_params['pi'], precision=4, suppress_small=True)}")
+        print(f"  Estimated π: {np.array2string(estimated_pi, precision=4, suppress_small=True)}")
+        print(f"  Mean Absolute Error (MAE):  {pi_mae:.6f}")
+        print(f"  Root Mean Squared Error (RMSE): {pi_rmse:.6f}")
+        
+        # Compare categorical probabilities (theta)
+        estimated_theta = best_model_params['theta']
+        true_theta = true_params['theta']
+        
         theta_mae = np.mean(np.abs(estimated_theta - true_theta))
         theta_rmse = np.sqrt(np.mean((estimated_theta - true_theta)**2))
         
@@ -342,8 +342,9 @@ def generate_and_analyze_synthetic_data(n_samples: int = 1000,
             class_mae = np.mean(np.abs(estimated_theta[k] - true_theta[k]))
             print(f"  Class {k}: MAE = {class_mae:.6f}")
     else:
-        print(f"\nCategorical Probabilities (θ_rkc):")
-        print(f"  ✗ Cannot compare θ values: K mismatch (selected={selector.best_K}, true={K_true})")
+        print(f"\nParameter Comparison:")
+        print(f"  ✗ Cannot compare parameters: K mismatch (selected={selector.best_K}, true={K_true})")
+        print(f"  True K has {K_true} classes, selected model has {selector.best_K} classes")
     
     # Save true parameters for reference
     true_params_path = f"results/{output_prefix}_true_params.npz"
