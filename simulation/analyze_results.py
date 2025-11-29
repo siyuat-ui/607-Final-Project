@@ -1,5 +1,6 @@
 """
 Analyze and visualize simulation results.
+Updated: All plots use error bars with x-axis offsets to avoid overlap.
 """
 
 import numpy as np
@@ -29,6 +30,7 @@ def plot_bic_success_rates(save_figures: bool = True):
     Plot BIC selection success rates vs sample size.
     
     Creates one plot per K_true showing success rate vs sample size.
+    Uses error bars instead of shaded regions.
     """
     print("\n" + "="*70)
     print("Plotting BIC Success Rates")
@@ -53,7 +55,7 @@ def plot_bic_success_rates(save_figures: bool = True):
         results_path = f"simulation/results/bic_selection/K{K_true}_results.csv"
         df = pd.read_csv(results_path)
         
-        # Plot success rate
+        # Plot success rate with markers only (no error bars for rates)
         ax.plot(df['n'], df['success_rate'], marker='o', linewidth=2.5, 
                 markersize=8, label='Success Rate', color='steelblue')
         ax.plot(df['n'], df['over_rate'], marker='s', linewidth=2, 
@@ -95,6 +97,7 @@ def plot_bic_success_rates(save_figures: bool = True):
 def plot_bic_success_rates_combined(save_figures: bool = True):
     """
     Plot BIC selection success rates for all K values on one plot.
+    Uses clean lines without error bars.
     """
     print("\n" + "="*70)
     print("Plotting Combined BIC Success Rates")
@@ -143,7 +146,7 @@ def plot_parameter_estimation_errors(save_figures: bool = True):
     """
     Plot parameter estimation errors (MAE and RMSE) vs sample size.
     
-    Creates separate plots for π and θ.
+    Creates separate plots for π and θ using error bars with x-offsets.
     """
     print("\n" + "="*70)
     print("Plotting Parameter Estimation Errors")
@@ -154,6 +157,10 @@ def plot_parameter_estimation_errors(save_figures: bool = True):
     K_values = config['K_values']
     
     colors = sns.color_palette("husl", len(K_values))
+    
+    # Create x-offsets to avoid overlap
+    n_K = len(K_values)
+    offsets = np.linspace(-50, 50, n_K)
     
     # ========================================================================
     # Plot for π (mixture weights)
@@ -166,12 +173,14 @@ def plot_parameter_estimation_errors(save_figures: bool = True):
         results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
         df = pd.read_csv(results_path)
         
-        ax.plot(df['n'], df['pi_mae_mean'], marker='o', linewidth=2.5, 
-                markersize=8, label=f'K = {K_true}', color=colors[idx])
-        ax.fill_between(df['n'], 
-                        df['pi_mae_mean'] - df['pi_mae_std'],
-                        df['pi_mae_mean'] + df['pi_mae_std'],
-                        alpha=0.2, color=colors[idx])
+        # Apply offset
+        x_offset = df['n'] + offsets[idx]
+        
+        ax.errorbar(x_offset, df['pi_mae_mean'], 
+                    yerr=df['pi_mae_std'],
+                    marker='o', linewidth=2.5, markersize=8, 
+                    label=f'K = {K_true}', color=colors[idx],
+                    capsize=5, capthick=2, elinewidth=2, alpha=0.8)
     
     ax.set_xlabel('Sample Size (n)', fontsize=12, fontweight='bold')
     ax.set_ylabel('MAE', fontsize=12, fontweight='bold')
@@ -186,12 +195,14 @@ def plot_parameter_estimation_errors(save_figures: bool = True):
         results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
         df = pd.read_csv(results_path)
         
-        ax.plot(df['n'], df['pi_rmse_mean'], marker='o', linewidth=2.5, 
-                markersize=8, label=f'K = {K_true}', color=colors[idx])
-        ax.fill_between(df['n'], 
-                        df['pi_rmse_mean'] - df['pi_rmse_std'],
-                        df['pi_rmse_mean'] + df['pi_rmse_std'],
-                        alpha=0.2, color=colors[idx])
+        # Apply offset
+        x_offset = df['n'] + offsets[idx]
+        
+        ax.errorbar(x_offset, df['pi_rmse_mean'], 
+                    yerr=df['pi_rmse_std'],
+                    marker='o', linewidth=2.5, markersize=8, 
+                    label=f'K = {K_true}', color=colors[idx],
+                    capsize=5, capthick=2, elinewidth=2, alpha=0.8)
     
     ax.set_xlabel('Sample Size (n)', fontsize=12, fontweight='bold')
     ax.set_ylabel('RMSE', fontsize=12, fontweight='bold')
@@ -220,12 +231,14 @@ def plot_parameter_estimation_errors(save_figures: bool = True):
         results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
         df = pd.read_csv(results_path)
         
-        ax.plot(df['n'], df['theta_mae_mean'], marker='o', linewidth=2.5, 
-                markersize=8, label=f'K = {K_true}', color=colors[idx])
-        ax.fill_between(df['n'], 
-                        df['theta_mae_mean'] - df['theta_mae_std'],
-                        df['theta_mae_mean'] + df['theta_mae_std'],
-                        alpha=0.2, color=colors[idx])
+        # Apply offset
+        x_offset = df['n'] + offsets[idx]
+        
+        ax.errorbar(x_offset, df['theta_mae_mean'], 
+                    yerr=df['theta_mae_std'],
+                    marker='o', linewidth=2.5, markersize=8, 
+                    label=f'K = {K_true}', color=colors[idx],
+                    capsize=5, capthick=2, elinewidth=2, alpha=0.8)
     
     ax.set_xlabel('Sample Size (n)', fontsize=12, fontweight='bold')
     ax.set_ylabel('MAE', fontsize=12, fontweight='bold')
@@ -240,12 +253,14 @@ def plot_parameter_estimation_errors(save_figures: bool = True):
         results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
         df = pd.read_csv(results_path)
         
-        ax.plot(df['n'], df['theta_rmse_mean'], marker='o', linewidth=2.5, 
-                markersize=8, label=f'K = {K_true}', color=colors[idx])
-        ax.fill_between(df['n'], 
-                        df['theta_rmse_mean'] - df['theta_rmse_std'],
-                        df['theta_rmse_mean'] + df['theta_rmse_std'],
-                        alpha=0.2, color=colors[idx])
+        # Apply offset
+        x_offset = df['n'] + offsets[idx]
+        
+        ax.errorbar(x_offset, df['theta_rmse_mean'], 
+                    yerr=df['theta_rmse_std'],
+                    marker='o', linewidth=2.5, markersize=8, 
+                    label=f'K = {K_true}', color=colors[idx],
+                    capsize=5, capthick=2, elinewidth=2, alpha=0.8)
     
     ax.set_xlabel('Sample Size (n)', fontsize=12, fontweight='bold')
     ax.set_ylabel('RMSE', fontsize=12, fontweight='bold')
@@ -266,7 +281,7 @@ def plot_parameter_estimation_errors(save_figures: bool = True):
 
 def plot_computation_time_analysis(save_figures: bool = True):
     """
-    Plot computation time analysis.
+    Plot computation time analysis using error bars with x-offsets.
     """
     print("\n" + "="*70)
     print("Plotting Computation Time Analysis")
@@ -278,6 +293,10 @@ def plot_computation_time_analysis(save_figures: bool = True):
     
     colors = sns.color_palette("husl", len(K_values))
     
+    # Create x-offsets
+    n_K = len(K_values)
+    offsets = np.linspace(-50, 50, n_K)
+    
     # ========================================================================
     # BIC Selection Time
     # ========================================================================
@@ -287,12 +306,14 @@ def plot_computation_time_analysis(save_figures: bool = True):
         results_path = f"simulation/results/bic_selection/K{K_true}_results.csv"
         df = pd.read_csv(results_path)
         
-        ax.plot(df['n'], df['mean_time'], marker='o', linewidth=2.5, 
-                markersize=8, label=f'K = {K_true}', color=colors[idx])
-        ax.fill_between(df['n'], 
-                        df['mean_time'] - df['std_time'],
-                        df['mean_time'] + df['std_time'],
-                        alpha=0.2, color=colors[idx])
+        # Apply offset
+        x_offset = df['n'] + offsets[idx]
+        
+        ax.errorbar(x_offset, df['mean_time'], 
+                    yerr=df['std_time'],
+                    marker='o', linewidth=2.5, markersize=8, 
+                    label=f'K = {K_true}', color=colors[idx],
+                    capsize=5, capthick=2, elinewidth=2, alpha=0.8)
     
     ax.set_xlabel('Sample Size (n)', fontsize=14, fontweight='bold')
     ax.set_ylabel('Computation Time (seconds)', fontsize=14, fontweight='bold')
@@ -319,12 +340,14 @@ def plot_computation_time_analysis(save_figures: bool = True):
         results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
         df = pd.read_csv(results_path)
         
-        ax.plot(df['n'], df['mean_time'], marker='o', linewidth=2.5, 
-                markersize=8, label=f'K = {K_true}', color=colors[idx])
-        ax.fill_between(df['n'], 
-                        df['mean_time'] - df['std_time'],
-                        df['mean_time'] + df['std_time'],
-                        alpha=0.2, color=colors[idx])
+        # Apply offset
+        x_offset = df['n'] + offsets[idx]
+        
+        ax.errorbar(x_offset, df['mean_time'], 
+                    yerr=df['std_time'],
+                    marker='o', linewidth=2.5, markersize=8, 
+                    label=f'K = {K_true}', color=colors[idx],
+                    capsize=5, capthick=2, elinewidth=2, alpha=0.8)
     
     ax.set_xlabel('Sample Size (n)', fontsize=14, fontweight='bold')
     ax.set_ylabel('Computation Time (seconds)', fontsize=14, fontweight='bold')
@@ -342,78 +365,6 @@ def plot_computation_time_analysis(save_figures: bool = True):
     
     plt.show()
 
-
-def create_summary_tables(save_tables: bool = True):
-    """
-    Create comprehensive summary tables of simulation results.
-    """
-    print("\n" + "="*70)
-    print("Creating Summary Tables")
-    print("="*70)
-    
-    # Load configuration
-    config = load_simulation_config()
-    K_values = config['K_values']
-    
-    # ========================================================================
-    # BIC Selection Summary
-    # ========================================================================
-    print("\nBIC Selection Summary:")
-    
-    bic_summary = []
-    for K_true in K_values:
-        results_path = f"simulation/results/bic_selection/K{K_true}_results.csv"
-        df = pd.read_csv(results_path)
-        
-        for _, row in df.iterrows():
-            bic_summary.append({
-                'K_true': K_true,
-                'n': row['n'],
-                'success_rate': row['success_rate'],
-                'over_rate': row['over_rate'],
-                'under_rate': row['under_rate'],
-                'mean_selected_K': row['mean_selected_K'],
-                'mean_time_sec': row['mean_time']
-            })
-    
-    df_bic = pd.DataFrame(bic_summary)
-    print(df_bic.to_string(index=False))
-    
-    if save_tables:
-        table_path = "simulation/results/bic_summary_table.csv"
-        df_bic.to_csv(table_path, index=False)
-        print(f"\nBIC summary table saved to: {table_path}")
-    
-    # ========================================================================
-    # Parameter Estimation Summary
-    # ========================================================================
-    print("\n" + "="*70)
-    print("\nParameter Estimation Summary:")
-    
-    est_summary = []
-    for K_true in K_values:
-        results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
-        df = pd.read_csv(results_path)
-        
-        for _, row in df.iterrows():
-            est_summary.append({
-                'K_true': K_true,
-                'n': row['n'],
-                'pi_mae': row['pi_mae_mean'],
-                'pi_rmse': row['pi_rmse_mean'],
-                'theta_mae': row['theta_mae_mean'],
-                'theta_rmse': row['theta_rmse_mean'],
-                'convergence_rate': row['convergence_rate'],
-                'mean_time_sec': row['mean_time']
-            })
-    
-    df_est = pd.DataFrame(est_summary)
-    print(df_est.to_string(index=False))
-    
-    if save_tables:
-        table_path = "simulation/results/estimation_summary_table.csv"
-        df_est.to_csv(table_path, index=False)
-        print(f"\nEstimation summary table saved to: {table_path}")
 
 def plot_confusion_matrices_by_sample_size(save_figures: bool = True):
     """
@@ -485,6 +436,7 @@ def plot_confusion_matrices_by_sample_size(save_figures: bool = True):
 def plot_classification_accuracy(save_figures: bool = True):
     """
     Plot classification accuracy vs sample size for all K values.
+    Uses error bars with x-offsets to avoid overlap.
     """
     print("\n" + "="*70)
     print("Plotting Classification Accuracy vs Sample Size")
@@ -496,6 +448,10 @@ def plot_classification_accuracy(save_figures: bool = True):
     
     colors = sns.color_palette("husl", len(K_values))
     
+    # Create x-offsets
+    n_K = len(K_values)
+    offsets = np.linspace(-50, 50, n_K)
+    
     fig, ax = plt.subplots(figsize=(12, 7))
     
     for idx, K_true in enumerate(K_values):
@@ -503,13 +459,15 @@ def plot_classification_accuracy(save_figures: bool = True):
         results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
         df = pd.read_csv(results_path)
         
-        # Plot accuracy with error bars
-        ax.plot(df['n'], df['accuracy_mean'], marker='o', linewidth=2.5, 
-                markersize=8, label=f'K = {K_true}', color=colors[idx])
-        ax.fill_between(df['n'], 
-                        df['accuracy_mean'] - df['accuracy_std'],
-                        df['accuracy_mean'] + df['accuracy_std'],
-                        alpha=0.2, color=colors[idx])
+        # Apply offset
+        x_offset = df['n'] + offsets[idx]
+        
+        # Plot with error bars
+        ax.errorbar(x_offset, df['accuracy_mean'], 
+                    yerr=df['accuracy_std'],
+                    marker='o', linewidth=2.5, markersize=8, 
+                    label=f'K = {K_true}', color=colors[idx],
+                    capsize=5, capthick=2, elinewidth=2, alpha=0.8)
     
     ax.set_xlabel('Sample Size (n)', fontsize=14, fontweight='bold')
     ax.set_ylabel('Classification Accuracy', fontsize=14, fontweight='bold')
@@ -520,7 +478,7 @@ def plot_classification_accuracy(save_figures: bool = True):
     ax.set_ylim([0, 1.05])
     
     # Add horizontal line at perfect accuracy
-    ax.axhline(y=1.0, color='red', linestyle=':', linewidth=1.5, alpha=0.5, label='Perfect')
+    ax.axhline(y=1.0, color='red', linestyle=':', linewidth=1.5, alpha=0.5)
     
     plt.tight_layout()
     
@@ -535,6 +493,7 @@ def plot_classification_accuracy(save_figures: bool = True):
 def plot_per_class_accuracy(save_figures: bool = True):
     """
     Plot per-class accuracy (diagonal of confusion matrix) vs sample size.
+    Uses clean lines (no error bars) for clarity.
     """
     print("\n" + "="*70)
     print("Plotting Per-Class Accuracy")
@@ -577,6 +536,80 @@ def plot_per_class_accuracy(save_figures: bool = True):
         plt.show()
 
 
+def create_summary_tables(save_tables: bool = True):
+    """
+    Create comprehensive summary tables of simulation results.
+    """
+    print("\n" + "="*70)
+    print("Creating Summary Tables")
+    print("="*70)
+    
+    # Load configuration
+    config = load_simulation_config()
+    K_values = config['K_values']
+    
+    # ========================================================================
+    # BIC Selection Summary
+    # ========================================================================
+    print("\nBIC Selection Summary:")
+    
+    bic_summary = []
+    for K_true in K_values:
+        results_path = f"simulation/results/bic_selection/K{K_true}_results.csv"
+        df = pd.read_csv(results_path)
+        
+        for _, row in df.iterrows():
+            bic_summary.append({
+                'K_true': K_true,
+                'n': row['n'],
+                'success_rate': row['success_rate'],
+                'over_rate': row['over_rate'],
+                'under_rate': row['under_rate'],
+                'mean_selected_K': row['mean_selected_K'],
+                'mean_time_sec': row['mean_time']
+            })
+    
+    df_bic = pd.DataFrame(bic_summary)
+    print(df_bic.to_string(index=False))
+    
+    if save_tables:
+        table_path = "simulation/results/bic_summary_table.csv"
+        df_bic.to_csv(table_path, index=False)
+        print(f"\nBIC summary table saved to: {table_path}")
+    
+    # ========================================================================
+    # Parameter Estimation Summary
+    # ========================================================================
+    print("\n" + "="*70)
+    print("\nParameter Estimation Summary:")
+    
+    est_summary = []
+    for K_true in K_values:
+        results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
+        df = pd.read_csv(results_path)
+        
+        for _, row in df.iterrows():
+            est_summary.append({
+                'K_true': K_true,
+                'n': row['n'],
+                'pi_mae': row['pi_mae_mean'],
+                'pi_rmse': row['pi_rmse_mean'],
+                'theta_mae': row['theta_mae_mean'],
+                'theta_rmse': row['theta_rmse_mean'],
+                'accuracy': row['accuracy_mean'],
+                'convergence_rate': row['convergence_rate'],
+                'mean_time_sec': row['mean_time']
+            })
+    
+    df_est = pd.DataFrame(est_summary)
+    print(df_est.to_string(index=False))
+    
+    if save_tables:
+        table_path = "simulation/results/estimation_summary_table.csv"
+        df_est.to_csv(table_path, index=False)
+        print(f"\nEstimation summary table saved to: {table_path}")
+
+
 def generate_all_plots_and_tables():
     """Generate all plots and tables."""
     print("\n" + "="*70)
@@ -592,7 +625,7 @@ def generate_all_plots_and_tables():
     plot_parameter_estimation_errors(save_figures=True)
     plot_computation_time_analysis(save_figures=True)
     
-    # NEW: Confusion matrix plots
+    # Confusion matrix plots
     plot_confusion_matrices_by_sample_size(save_figures=True)
     plot_classification_accuracy(save_figures=True)
     plot_per_class_accuracy(save_figures=True)
