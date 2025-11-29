@@ -1,8 +1,10 @@
 """
 Model selection for latent class models using BIC.
+Optimized parallelization strategy.
 """
 
 import numpy as np
+import multiprocessing
 from typing import List, Tuple, Optional, Dict
 from joblib import Parallel, delayed
 from src.latent_class_modeling import LatentClassModel
@@ -73,7 +75,7 @@ def fit_single_K(X: np.ndarray,
                  max_iter: int,
                  tol: float,
                  n_init: int,
-                 n_jobs: int,
+                 n_jobs_init: int,
                  random_state: Optional[int],
                  verbose: bool) -> Tuple[int, float, float, dict]:
     """
@@ -95,8 +97,8 @@ def fit_single_K(X: np.ndarray,
         Convergence tolerance
     n_init : int
         Number of random initializations
-    n_jobs : int
-        Number of parallel jobs for initializations
+    n_jobs_init : int
+        Number of parallel jobs for initializations within this K
     random_state : int, optional
         Random seed
     verbose : bool
@@ -117,7 +119,7 @@ def fit_single_K(X: np.ndarray,
     
     # Fit model
     model = LatentClassModel(K=K, categories=categories, random_state=random_state)
-    model.fit(X, max_iter=max_iter, tol=tol, n_init=n_init, n_jobs=n_jobs, verbose=False)
+    model.fit(X, max_iter=max_iter, tol=tol, n_init=n_init, n_jobs=n_jobs_init, verbose=False)
     
     # Get log-likelihood
     log_lik = model.best_log_likelihood
@@ -136,6 +138,7 @@ def fit_single_K(X: np.ndarray,
 class BICModelSelector:
     """
     Select optimal number of latent classes using BIC.
+    Optimized parallelization strategy.
     """
     
     def __init__(self,
@@ -172,7 +175,7 @@ class BICModelSelector:
         self.max_iter = max_iter
         self.tol = tol
         self.n_init = n_init
-        self.n_jobs = n_jobs
+        self.n_jobs = n_jobs if n_jobs != -1 else multiprocessing.cpu_count()
         self.random_state = random_state
         
         # Results storage
@@ -182,7 +185,42 @@ class BICModelSelector:
         self.best_model_params = None
         self.all_model_params = None
         
-    def fit(self, X: np.ndarray, verbose: bool = True, parallel_K: bool = True) -> 'BICModelSelector':
+    def _determine_parallel_strategy(self) -> Tuple[int, int]:
+        """
+        Determine optimal parallelization strategy.
+        
+        Strategy:
+        - If K_range is small (≤4), parallelize initializations within each K
+        - If K_range is large (>4), parallelize across K values
+        - If both are moderate, use nested parallelization
+        
+        Returns
+        -------
+        n_jobs_K : int
+            Number of parallel jobs for K values
+        n_jobs_init : int
+            Number of parallel jobs for initializations within each K
+        """
+        n_K = len(self.K_range)
+        n_cores = self.n_jobs
+        
+        if n_K <= 3:
+            # Few K values: parallelize initializations
+            return 1, n_cores
+        elif n_K >= n_cores:
+            # Many K values: parallelize across K
+            return n_cores, 1
+        else:
+            # Moderate case: distribute cores
+            # Try to balance parallelization
+            cores_per_K = max(1, n_cores // n_K)
+            n_jobs_K = min(n_K, n_cores)
+            n_jobs_init = max(1, cores_per_K)
+            return n_jobs_K, n_jobs_init
+    
+    def fit(self, X: np.ndarray, 
+            verbose: bool = True, 
+            parallel_strategy: str = 'auto') -> 'BICModelSelector':
         """
         Fit models for all K values and select best via BIC.
         
@@ -192,10 +230,11 @@ class BICModelSelector:
             Data matrix
         verbose : bool, default=True
             Whether to print progress
-        parallel_K : bool, default=True
-            Whether to parallelize across different K values.
-            If True, fits different K values in parallel (uses n_jobs processors total).
-            If False, fits K values sequentially (but each K still uses parallel initializations).
+        parallel_strategy : str, default='auto'
+            Parallelization strategy:
+            - 'auto': Automatically determine best strategy
+            - 'across_K': Parallelize across K values (sequential initializations)
+            - 'within_K': Sequential K values (parallel initializations)
             
         Returns
         -------
@@ -210,31 +249,52 @@ class BICModelSelector:
         if verbose:
             print(f"BIC Model Selection: Testing K in {self.K_range}")
             print(f"Each K fitted with {self.n_init} random initializations")
+            print(f"Total available cores: {self.n_jobs}")
             print("=" * 60)
         
+        # Determine parallelization strategy
+        if parallel_strategy == 'auto':
+            n_jobs_K, n_jobs_init = self._determine_parallel_strategy()
+            if verbose:
+                print(f"Auto-selected strategy: {n_jobs_K} jobs for K, {n_jobs_init} jobs for inits")
+        elif parallel_strategy == 'across_K':
+            n_jobs_K = self.n_jobs
+            n_jobs_init = 1
+            if verbose:
+                print(f"Strategy: Parallelize across K values")
+        elif parallel_strategy == 'within_K':
+            n_jobs_K = 1
+            n_jobs_init = self.n_jobs
+            if verbose:
+                print(f"Strategy: Parallelize within each K")
+        else:
+            raise ValueError(f"Unknown parallel_strategy: {parallel_strategy}")
+        
         # Fit models for each K value
-        if parallel_K:
+        if n_jobs_K > 1:
             # Parallelize across K values
             if verbose:
-                print("Running models in parallel across K values...")
+                print(f"Running {len(self.K_range)} K values in parallel...")
             
-            results = Parallel(n_jobs=self.n_jobs)(
+            results = Parallel(n_jobs=n_jobs_K)(
                 delayed(fit_single_K)(
                     X, K, self.categories, self.max_iter, self.tol,
-                    self.n_init, 1, self.random_state, verbose
+                    self.n_init, n_jobs_init, self.random_state, verbose
                 )
                 for K in self.K_range
             )
         else:
             # Sequential across K values (but parallel initializations within each K)
             if verbose:
-                print("Running models sequentially across K values...")
+                print(f"Running K values sequentially with parallel initializations...")
             
             results = []
             for K in self.K_range:
+                if verbose:
+                    print(f"\nFitting K={K}...")
                 result = fit_single_K(
                     X, K, self.categories, self.max_iter, self.tol,
-                    self.n_init, self.n_jobs, self.random_state, verbose
+                    self.n_init, n_jobs_init, self.random_state, verbose
                 )
                 results.append(result)
         
