@@ -1,5 +1,6 @@
 """
 Latent class model for multivariate categorical data with EM algorithm.
+Fully vectorized implementation for computational efficiency.
 """
 
 import numpy as np
@@ -18,6 +19,8 @@ class LatentClassModel:
     where:
     - π_k are mixture weights
     - θ_rkc = P(X^(r) = c | H = k) are categorical probabilities
+    
+    This implementation uses fully vectorized operations for efficiency.
     """
     
     def __init__(self, 
@@ -65,11 +68,12 @@ class LatentClassModel:
         """
         rng = np.random.default_rng(seed)
         
-        # Initialize mixture weights uniformly with small random perturbation
-        self.pi = np.ones(self.K) / self.K + rng.normal(0, 0.01, self.K)
-        self.pi = np.abs(self.pi)
-        self.pi /= self.pi.sum()
-        
+        # Initialize mixture weights
+        # self.pi = np.ones(self.K) / self.K + rng.normal(0, 0.01, self.K)
+        # self.pi = np.abs(self.pi)
+        # self.pi /= self.pi.sum()
+        self.pi = rng.dirichlet(np.ones(self.K))
+
         # Sort to satisfy ordering constraint
         self.pi = np.sort(self.pi)[::-1]
         
@@ -87,6 +91,8 @@ class LatentClassModel:
         """
         Compute Σ_r log(θ_rkX_i^(r)) for all samples and classes.
         
+        FULLY VECTORIZED implementation using advanced indexing.
+        
         Parameters
         ----------
         X : np.ndarray, shape (n, m)
@@ -98,13 +104,25 @@ class LatentClassModel:
             For each sample i and class k: Σ_r log(θ_rkX_i^(r))
         """
         n = X.shape[0]
-        log_theta_products = np.zeros((n, self.K))
         
-        for k in range(self.K):
-            for r in range(self.m):
-                # Extract the log probabilities for the observed categories
-                # X[i, r] gives the category for sample i, variable r
-                log_theta_products[:, k] += np.log(self.theta[k, r, X[:, r]] + 1e-10)
+        # Create broadcasting-compatible index arrays
+        # sample_idx: (n, 1, 1) - broadcasts over K and m
+        # class_idx: (1, K, 1) - broadcasts over n and m
+        # var_idx: (1, 1, m) - broadcasts over n and K
+        sample_idx = np.arange(n)[:, None, None]
+        class_idx = np.arange(self.K)[None, :, None]
+        var_idx = np.arange(self.m)[None, None, :]
+        
+        # Extract all theta[k, r, X[i,r]] values at once
+        # X[:, None, :] has shape (n, 1, m) to broadcast with class dimension
+        # Result shape: (n, K, m)
+        log_theta_values = np.log(
+            self.theta[class_idx, var_idx, X[:, None, :]] + 1e-10
+        )
+        
+        # Sum over variables (axis=2)
+        # Result shape: (n, K)
+        log_theta_products = np.sum(log_theta_values, axis=2)
         
         return log_theta_products
     
@@ -134,9 +152,9 @@ class LatentClassModel:
         
         return gamma
     
-    def _m_step(self, X: np.ndarray, gamma: np.ndarray) -> None:
+    def _m_step_vectorized(self, X: np.ndarray, gamma: np.ndarray) -> None:
         """
-        M-step: Update parameters to maximize expected complete log-likelihood.
+        M-step: Update parameters using VECTORIZED operations.
         
         From PDF (page 2):
         π_k^new = (1/n) Σ_i γ_ik
@@ -151,25 +169,35 @@ class LatentClassModel:
         """
         n = X.shape[0]
         
-        # Update mixture weights
+        # Update mixture weights - VECTORIZED
         # π_k^new = (1/n) Σ_i γ_ik
         self.pi = np.mean(gamma, axis=0)
         
-        # Update categorical probabilities
+        # Update categorical probabilities - VECTORIZED
         # θ_rkc^new = Σ_i γ_ik 1(X_i^(r) = c) / Σ_i γ_ik
-        for k in range(self.K):
-            for r in range(self.m):
-                for c in range(self.categories[r]):
-                    # Indicator: 1(X_i^(r) = c)
-                    indicator = (X[:, r] == c).astype(float)
-                    
-                    # Numerator: Σ_i γ_ik 1(X_i^(r) = c)
-                    numerator = np.sum(gamma[:, k] * indicator)
-                    
-                    # Denominator: Σ_i γ_ik
-                    denominator = np.sum(gamma[:, k])
-                    
-                    self.theta[k, r, c] = numerator / (denominator + 1e-10)
+        
+        # Denominator: Σ_i γ_ik for each k
+        # Shape: (K,)
+        gamma_sum = np.sum(gamma, axis=0)  # Shape: (K,)
+        
+        # For each variable r
+        for r in range(self.m):
+            C_r = self.categories[r]
+            
+            # Create indicator matrix: I[i, c] = 1 if X[i, r] == c, else 0
+            # Shape: (n, C_r)
+            indicators = np.zeros((n, C_r))
+            indicators[np.arange(n), X[:, r]] = 1
+            
+            # Compute numerator: Σ_i γ_ik 1(X_i^(r) = c)
+            # We want: for each k and c, sum over i of gamma[i, k] * indicators[i, c]
+            # This is: gamma.T @ indicators
+            # Shape: (K, C_r)
+            numerator = gamma.T @ indicators  # Matrix multiplication
+            
+            # Compute θ_rkc = numerator / denominator
+            # Shape: (K, C_r)
+            self.theta[:, r, :C_r] = numerator / (gamma_sum[:, np.newaxis] + 1e-10)
         
         # Enforce ordering constraint to handle label switching
         self.pi, self.theta = enforce_ordering(self.pi, self.theta)
@@ -250,8 +278,8 @@ class LatentClassModel:
             # E-step
             gamma = self._e_step(X)
             
-            # M-step
-            self._m_step(X, gamma)
+            # M-step (VECTORIZED)
+            self._m_step_vectorized(X, gamma)
             
             # Compute log-likelihood
             log_lik = self._compute_log_likelihood(X)
