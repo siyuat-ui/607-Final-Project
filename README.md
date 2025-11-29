@@ -8,10 +8,10 @@ End-to-end software for latent class analysis of multivariate categorical data w
 
 ## Overview
 
-This package implements a **latent class model** for multivariate categorical data with:
-- Automatic K selection via BIC (K = # latent classes)
+This package implements a **latent class model for multivariate categorical data** with:
+- Automatic model selection via BIC
 - Vectorized EM algorithm
-- Parallel processing across initializations and K values
+- Parallel processing across initializations and $K$ values ($K$ = # latent classes)
 - Comprehensive simulation validation
 
 **Methodology:** See `docs/methodology.pdf`
@@ -55,6 +55,8 @@ python simulation/run_simulations.py
 python simulation/analyze_results.py
 ```
 
+Please note that it takes 40-50 minutes if you run the default simulation configuration.
+
 ---
 
 ## Project Structure
@@ -77,7 +79,7 @@ python simulation/analyze_results.py
 │   ├── presentation.pdf
 │   ├── methodology.pdf             
 ├── README.md                       # This file
-└── report-Tang.md                  # Project report
+└── report-Tang.pdf                 # Project report
 ```
 
 ---
@@ -108,15 +110,35 @@ params = model.get_parameters()
 
 ## Simulation Configuration
 
-Edit `simulation/run_simulations.py`:
+Edit `simulation/run_simulations.py` if you need to:
 
 ```python
 SIMULATION_CONFIG = {
-    'M': 50,                        # Simulations per config
-    'K_values': [2, 3, 4, 5],       # True K values
-    'sample_sizes': [500, 1000, 2000, 3000, 5000, 8000],
-    'max_iter': 200,
-    'n_init': 5
+
+'M': 50, # Simulations per configuration
+
+'m': 20, # Number of variables
+
+'C': 2, # Categories per variable
+
+'K_values': [2, 3, 4, 5], # True K values to test
+
+'sample_sizes': [500, 1000, 2000, 3000, 5000],
+
+'K_range_margin': 2, # Test K_true ± margin
+
+'K_min': 1, # Minimum K to test
+
+'K_max': 10, # Maximum K to test
+
+'max_iter': 200, # EM max iterations
+
+'tol': 1e-6, # EM convergence tolerance
+
+'n_init': 5, # Number of random initializations
+
+'base_seed': 42 # Base random seed
+
 }
 ```
 
@@ -138,4 +160,5 @@ SIMULATION_CONFIG = {
 ## Documentation
 
 - **Methodology:** `docs/methodology.pdf`
-- **Project Report:** `docs/report-Tang.md`
+- **Project Report:** `docs/report-Tang.pdf`
+- **In-class Presentation Slides:** `docs/presentation.pdf`

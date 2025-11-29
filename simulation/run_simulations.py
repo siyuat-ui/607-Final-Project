@@ -24,11 +24,11 @@ from simulation_utils import (
 # ============================================================================
 
 SIMULATION_CONFIG = {
-    'M': 5,                                            # Simulations per configuration
+    'M': 50,                                            # Simulations per configuration
     'm': 20,                                            # Number of variables
     'C': 2,                                             # Categories per variable
     'K_values': [2, 3, 4, 5],                           # True K values to test
-    'sample_sizes': [500, 1000, 2000, 3000, 5000, 8000],
+    'sample_sizes': [500, 1000, 2000, 3000, 5000],
     'K_range_margin': 2,                                # Test K_true ± margin (NEW)
     'K_min': 1,                                         # Minimum K to test (NEW)
     'K_max': 10,                                        # Maximum K to test (NEW)

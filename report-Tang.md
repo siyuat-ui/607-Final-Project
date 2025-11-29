@@ -4,7 +4,7 @@
 
 ---
 
-## a. Motivation
+## A. Motivation
 
 ### Problem
 Analyzing multivariate categorical data becomes intractable as the number of variables grows. With $m=20$ binary variables, there are $2^{20} ≈$ 1 million possible patterns. Latent class models solve this by assuming $K \ll 2^m$ latent classes within which variables are conditionally independent.
@@ -18,9 +18,11 @@ Latent class analysis is used in social sciences, medicine, marketing, and psych
 
 ---
 
-## b. Project Description
+## B. Project Description
 
 ### What I Built
+
+For my methodology of latent class modeling, see `docs/methodology.pdf`.
 
 **1. Core Pipeline (`src/`)**
 - **Vectorized EM algorithm** for parameter estimation
@@ -28,7 +30,7 @@ Latent class analysis is used in social sciences, medicine, marketing, and psych
 - **Synthetic data generation** for validation
 
 **2. Simulation Studies (`simulation/`)**
-- Monte Carlo validation: $M=50$ simulations × $24$ configurations
+- Monte Carlo validation: $M=50$ simulations $\times ~ 5$ sample sizes $\times ~ 4 ~ K$ values
 - Tests: BIC selection accuracy, parameter estimation errors, classification performance
 - Metrics: Success rates, MAE/RMSE for $\pi$ and $\theta$, confusion matrices
 
@@ -47,11 +49,13 @@ Latent class analysis is used in social sciences, medicine, marketing, and psych
 
 **Simulation Studies:** Structured Monte Carlo framework for validation
 
+**Progress tracking**: via tqdm
+
 **Software Engineering:** Modular design, CLI interfaces, comprehensive documentation
 
 ---
 
-## c. Results
+## C. Results
 
 ### Main Pipeline Demo
 
@@ -80,44 +84,43 @@ Per-Class θ Errors:
   ✓ True parameters saved to: results/analysis_true_params.npz
 ```
 
+**User's dataset**:
+```python
+# Suppose the user's dataset is `data/mydata.csv`)
+python main.py --data data/mydata.csv --output-prefix my_analysis
+```
+
 ### Simulation Results
 
 **1. BIC Selection Accuracy**
 
-See: `simulation/results/figures/bic_success_rates_combined.png`.
+See `simulation/results/figures/bic_success_rates_combined.png`.
 
 ![[bic_success_rates_combined.png]]
 
 **2. Parameter Estimation**  
 
-See: `simulation/results/figures/pi_estimation_errors.png`.
-
+See `simulation/results/figures/pi_estimation_errors.png`.
 
 ![[pi_estimation_errors.png]]
 
-And `theta_estimation_errors.png`.
-
-![[theta_estimation_errors.png]]
+And `simulation/results/figures/theta_estimation_errors.png`.  (Not shown here)
 
 **3. Classification Performance**  
 
-See: `simulation/results/figures/confusion_matrices_K{2,3,4,5}.png`. (Only `simulation/results/figures/confusion_matrices_K2.png` is shown here)
+See `simulation/results/figures/confusion_matrices_K{2,3,4,5}.png`. (Not shown here)
 
-![[confusion_matrices_K2.png]]
-
-See: `simulation/results/figures/classification_accuracy_vs_n.png`.
+See `simulation/results/figures/classification_accuracy_vs_n.png`.
 
 ![[classification_accuracy_vs_n.png]]
 
 **4. Computation Time** 
 
-See: `simulation/results/figures/bic_computation_time.png`.
-
-![[bic_computation_time.png]]
+See `simulation/results/figures/bic_computation_time.png`. (Not shown here)
 
 ---
 
-## d. Lessons Learned
+## D. Lessons Learned
 
 ### Challenges
 
@@ -130,7 +133,7 @@ See: `simulation/results/figures/bic_computation_time.png`.
 - Solution: Post-hoc sorting by mixture weights
 
 **3. Parallelization Trade-offs**
-- Problem: Naive parallelization → memory issues
+- Problem: Naive parallelization → memory issues and slow
 - Solution: Adaptive strategy based on $K$ range size
 
 ### How My Approach Changed

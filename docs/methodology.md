@@ -109,6 +109,27 @@ $$
 \pi_1 \geq \ldots \geq \pi_K.
 $$
 
+## Classification
+
+After fitting the model, we may predict the label of each sample $i$ by
+
+$$
+\begin{align}
+\hat{H}_{i} = \mathop{\arg \max}_{ k \in [K] } ~ \gamma_{ik}^{(\text{final})},
+\end{align}
+$$
+
+where
+
+$$
+\begin{align}
+\gamma_{ik}^{(\text{final})} &= P\left( H_i = k \vert X_i, \Theta^{(\text{final})} \right) \\
+&= \frac{\pi_k^{(\text{final})} \prod_{r=1}^m \theta_{rk X_i^{(r)}}^{(\text{final})}}{\sum_{j=1}^K \pi_j^{(\text{final})} \prod_{r=1}^m \theta_{rj X_i^{(r)}}^{(\text{final})}}.
+\end{align}
+$$
+
+Again, this expression should be evaluated in the log-space in order to avoid potential numerical issue.
+
 ## Model selection (choosing $K$)
 
 If the number of latent classes $K$ is unknown, we use [Bayesian information criterion (BIC)](https://en.wikipedia.org/wiki/Bayesian_information_criterion#:~:text=In%20statistics%2C%20the%20Bayesian%20information,lower%20BIC%20are%20generally%20preferred.) to estimate it, i.e.,
