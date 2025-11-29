@@ -13,9 +13,9 @@ import json
 
 from simulation_utils import (
     run_single_bic_simulation,
-    run_single_estimation_simulation,
+    run_single_estimation_simulation_with_labels,  # Updated import
     aggregate_bic_results,
-    aggregate_estimation_results
+    aggregate_estimation_results_with_confusion  # Updated import
 )
 
 
@@ -24,7 +24,7 @@ from simulation_utils import (
 # ============================================================================
 
 SIMULATION_CONFIG = {
-    'M': 10,                                            # Simulations per configuration
+    'M': 5,                                            # Simulations per configuration
     'm': 20,                                            # Number of variables
     'C': 2,                                             # Categories per variable
     'K_values': [2, 3, 4, 5],                           # True K values to test
@@ -190,7 +190,7 @@ def run_bic_study(config: dict, n_jobs: int = -1):
 
 def run_estimation_study(config: dict, n_jobs: int = -1):
     """
-    Run parameter estimation study.
+    Run parameter estimation study with confusion matrix tracking.
     
     Parameters
     ----------
@@ -218,6 +218,7 @@ def run_estimation_study(config: dict, n_jobs: int = -1):
     print(f"Simulations per configuration: {M}")
     print(f"Total simulation runs: {total_configs * M}")
     print(f"Parallelization: n_jobs={n_jobs}")
+    print(f"Tracking: Parameter errors + Confusion matrices")
     
     overall_start = time.time()
     
@@ -235,7 +236,7 @@ def run_estimation_study(config: dict, n_jobs: int = -1):
         for n in tqdm(sample_sizes, desc=f"K={K_true}"):
             # Run M simulations in parallel for this (K_true, n) configuration
             results = Parallel(n_jobs=n_jobs)(
-                delayed(run_single_estimation_simulation)(
+                delayed(run_single_estimation_simulation_with_labels)(
                     sim_id=sim_id,
                     n=n,
                     K_true=K_true,
@@ -254,14 +255,15 @@ def run_estimation_study(config: dict, n_jobs: int = -1):
             raw_path = f"simulation/results/raw_data/estimation_K{K_true}_n{n}_raw.csv"
             df_raw.to_csv(raw_path, index=False)
             
-            # Aggregate results
-            agg = aggregate_estimation_results(results)
+            # Aggregate results (including confusion matrix)
+            agg = aggregate_estimation_results_with_confusion(results)
             config_results.append(agg)
             all_results.append(agg)
             
             # Print progress
             print(f"  n={n:5d}: π MAE = {agg['pi_mae_mean']:.4f}, "
                   f"θ MAE = {agg['theta_mae_mean']:.4f}, "
+                  f"Accuracy = {agg['accuracy_mean']:.3f}, "
                   f"Time = {agg['mean_time']:.2f}s ± {agg['std_time']:.2f}s")
         
         # Save aggregated results for this K

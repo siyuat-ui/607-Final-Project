@@ -500,3 +500,163 @@ def aggregate_estimation_results(results_list: List[Dict]) -> Dict:
     }
     
     return aggregated
+
+def run_single_estimation_simulation_with_labels(sim_id: int,
+                                                 n: int,
+                                                 K_true: int,
+                                                 m: int,
+                                                 C: int,
+                                                 max_iter: int,
+                                                 tol: float,
+                                                 n_init: int,
+                                                 base_seed: int) -> Dict:
+    """
+    Run a single parameter estimation simulation with true label tracking.
+    
+    Parameters
+    ----------
+    sim_id : int
+        Simulation index
+    n : int
+        Sample size
+    K_true : int
+        True number of classes
+    m : int
+        Number of variables
+    C : int
+        Number of categories
+    max_iter : int
+        Maximum EM iterations
+    tol : float
+        Convergence tolerance
+    n_init : int
+        Number of initializations
+    base_seed : int
+        Base random seed
+        
+    Returns
+    -------
+    result : dict
+        Simulation results including confusion matrix
+    """
+    seed = base_seed + sim_id
+    
+    # Generate data (keep true labels H)
+    categories = [C] * m
+    dgp = LatentClassDGP(K=K_true, categories=categories, random_state=seed)
+    X, H = dgp.generate_data(n)
+    true_params = dgp.get_true_parameters()
+    
+    # Fit model with true K
+    model = LatentClassModel(K=K_true, categories=categories, random_state=seed)
+    model.fit(X, max_iter=max_iter, tol=tol, n_init=n_init, n_jobs=1, verbose=False)
+    
+    # Get computation time
+    estimated_params = model.get_parameters()
+    
+    # Predict labels
+    predicted_labels = model.predict(X)
+    
+    # Compute confusion matrix
+    confusion = np.zeros((K_true, K_true), dtype=int)
+    for true_label, pred_label in zip(H, predicted_labels):
+        confusion[true_label, pred_label] += 1
+    
+    # Compute accuracy
+    accuracy = np.sum(H == predicted_labels) / n
+    
+    # Compute errors
+    pi_errors = compute_pi_errors(true_params['pi'], estimated_params['pi'])
+    theta_errors = compute_theta_errors(true_params['theta'], estimated_params['theta'])
+    
+    result = {
+        'sim_id': sim_id,
+        'n': n,
+        'K_true': K_true,
+        'pi_mae': pi_errors['mae'],
+        'pi_rmse': pi_errors['rmse'],
+        'theta_mae': theta_errors['mae'],
+        'theta_rmse': theta_errors['rmse'],
+        'accuracy': accuracy,
+        'converged': int(estimated_params['converged']),
+        'n_iterations': estimated_params['n_iterations'],
+        'computation_time': 0  # Will be computed in the wrapper
+    }
+    
+    # Add confusion matrix as separate keys
+    for i in range(K_true):
+        for j in range(K_true):
+            result[f'conf_{i}_{j}'] = confusion[i, j]
+    
+    return result
+
+
+def aggregate_estimation_results_with_confusion(results_list: List[Dict]) -> Dict:
+    """
+    Aggregate results from multiple parameter estimation simulations including confusion matrix.
+    
+    Parameters
+    ----------
+    results_list : list of dict
+        List of individual simulation results
+        
+    Returns
+    -------
+    aggregated : dict
+        Aggregated statistics including mean confusion matrix
+    """
+    n = results_list[0]['n']
+    K_true = results_list[0]['K_true']
+    M = len(results_list)
+    
+    pi_maes = [r['pi_mae'] for r in results_list]
+    pi_rmses = [r['pi_rmse'] for r in results_list]
+    theta_maes = [r['theta_mae'] for r in results_list]
+    theta_rmses = [r['theta_rmse'] for r in results_list]
+    accuracies = [r['accuracy'] for r in results_list]
+    
+    convergence_rate = np.mean([r['converged'] for r in results_list])
+    mean_iterations = np.mean([r['n_iterations'] for r in results_list])
+    
+    mean_time = np.mean([r['computation_time'] for r in results_list])
+    std_time = np.std([r['computation_time'] for r in results_list])
+    
+    # Aggregate confusion matrix
+    confusion_sum = np.zeros((K_true, K_true))
+    for result in results_list:
+        for i in range(K_true):
+            for j in range(K_true):
+                confusion_sum[i, j] += result[f'conf_{i}_{j}']
+    
+    # Mean confusion matrix (normalized by M simulations)
+    confusion_mean = confusion_sum / M
+    
+    # Normalize row-wise to get conditional probabilities
+    confusion_normalized = confusion_mean / confusion_mean.sum(axis=1, keepdims=True)
+    
+    aggregated = {
+        'n': n,
+        'K_true': K_true,
+        'M': M,
+        'pi_mae_mean': np.mean(pi_maes),
+        'pi_mae_std': np.std(pi_maes),
+        'pi_rmse_mean': np.mean(pi_rmses),
+        'pi_rmse_std': np.std(pi_rmses),
+        'theta_mae_mean': np.mean(theta_maes),
+        'theta_mae_std': np.std(theta_maes),
+        'theta_rmse_mean': np.mean(theta_rmses),
+        'theta_rmse_std': np.std(theta_rmses),
+        'accuracy_mean': np.mean(accuracies),
+        'accuracy_std': np.std(accuracies),
+        'convergence_rate': convergence_rate,
+        'mean_iterations': mean_iterations,
+        'mean_time': mean_time,
+        'std_time': std_time
+    }
+    
+    # Add normalized confusion matrix entries
+    for i in range(K_true):
+        for j in range(K_true):
+            aggregated[f'conf_norm_{i}_{j}'] = confusion_normalized[i, j]
+    
+    return aggregated

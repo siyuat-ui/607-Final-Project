@@ -415,6 +415,167 @@ def create_summary_tables(save_tables: bool = True):
         df_est.to_csv(table_path, index=False)
         print(f"\nEstimation summary table saved to: {table_path}")
 
+def plot_confusion_matrices_by_sample_size(save_figures: bool = True):
+    """
+    Plot confusion matrices showing how classification improves with sample size.
+    
+    Creates one figure per K_true with subplots for each sample size (Option C).
+    """
+    print("\n" + "="*70)
+    print("Plotting Confusion Matrices by Sample Size")
+    print("="*70)
+    
+    # Load configuration
+    config = load_simulation_config()
+    K_values = config['K_values']
+    sample_sizes = config['sample_sizes']
+    
+    for K_true in K_values:
+        # Load results for this K
+        results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
+        df = pd.read_csv(results_path)
+        
+        # Create subplots - one per sample size
+        n_sizes = len(sample_sizes)
+        n_cols = min(5, n_sizes)  # Max 5 columns
+        n_rows = int(np.ceil(n_sizes / n_cols))
+        
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4*n_cols, 4*n_rows))
+        axes = np.array(axes).flatten() if n_sizes > 1 else [axes]
+        
+        for idx, n in enumerate(sample_sizes):
+            ax = axes[idx]
+            
+            # Get confusion matrix for this sample size
+            row = df[df['n'] == n].iloc[0]
+            
+            # Reconstruct normalized confusion matrix
+            conf_matrix = np.zeros((K_true, K_true))
+            for i in range(K_true):
+                for j in range(K_true):
+                    conf_matrix[i, j] = row[f'conf_norm_{i}_{j}']
+            
+            # Plot heatmap
+            sns.heatmap(conf_matrix, annot=True, fmt='.3f', cmap='Blues', 
+                       vmin=0, vmax=1, cbar=True, ax=ax,
+                       xticklabels=[f'{i}' for i in range(K_true)],
+                       yticklabels=[f'{i}' for i in range(K_true)])
+            
+            ax.set_title(f'n = {n}\nAccuracy: {row["accuracy_mean"]:.3f}', 
+                        fontsize=11, fontweight='bold')
+            ax.set_xlabel('Predicted Class', fontsize=10)
+            ax.set_ylabel('True Class', fontsize=10)
+        
+        # Hide unused subplots
+        for idx in range(n_sizes, len(axes)):
+            axes[idx].axis('off')
+        
+        plt.suptitle(f'Confusion Matrices for K_true = {K_true} (Row-Normalized)', 
+                    fontsize=14, fontweight='bold', y=0.995)
+        plt.tight_layout()
+        
+        if save_figures:
+            save_path = f"simulation/results/figures/confusion_matrices_K{K_true}.png"
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  ✓ Confusion matrices for K={K_true} saved to: {save_path}")
+        
+        plt.show()
+
+
+def plot_classification_accuracy(save_figures: bool = True):
+    """
+    Plot classification accuracy vs sample size for all K values.
+    """
+    print("\n" + "="*70)
+    print("Plotting Classification Accuracy vs Sample Size")
+    print("="*70)
+    
+    # Load configuration
+    config = load_simulation_config()
+    K_values = config['K_values']
+    
+    colors = sns.color_palette("husl", len(K_values))
+    
+    fig, ax = plt.subplots(figsize=(12, 7))
+    
+    for idx, K_true in enumerate(K_values):
+        # Load results
+        results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
+        df = pd.read_csv(results_path)
+        
+        # Plot accuracy with error bars
+        ax.plot(df['n'], df['accuracy_mean'], marker='o', linewidth=2.5, 
+                markersize=8, label=f'K = {K_true}', color=colors[idx])
+        ax.fill_between(df['n'], 
+                        df['accuracy_mean'] - df['accuracy_std'],
+                        df['accuracy_mean'] + df['accuracy_std'],
+                        alpha=0.2, color=colors[idx])
+    
+    ax.set_xlabel('Sample Size (n)', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Classification Accuracy', fontsize=14, fontweight='bold')
+    ax.set_title('Classification Accuracy vs Sample Size', 
+                 fontsize=16, fontweight='bold')
+    ax.legend(fontsize=12, title='True K', title_fontsize=12)
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim([0, 1.05])
+    
+    # Add horizontal line at perfect accuracy
+    ax.axhline(y=1.0, color='red', linestyle=':', linewidth=1.5, alpha=0.5, label='Perfect')
+    
+    plt.tight_layout()
+    
+    if save_figures:
+        save_path = "simulation/results/figures/classification_accuracy_vs_n.png"
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"  ✓ Classification accuracy plot saved to: {save_path}")
+    
+    plt.show()
+
+
+def plot_per_class_accuracy(save_figures: bool = True):
+    """
+    Plot per-class accuracy (diagonal of confusion matrix) vs sample size.
+    """
+    print("\n" + "="*70)
+    print("Plotting Per-Class Accuracy")
+    print("="*70)
+    
+    # Load configuration
+    config = load_simulation_config()
+    K_values = config['K_values']
+    
+    for K_true in K_values:
+        # Load results
+        results_path = f"simulation/results/parameter_estimation/K{K_true}_results.csv"
+        df = pd.read_csv(results_path)
+        
+        fig, ax = plt.subplots(figsize=(12, 7))
+        
+        colors = sns.color_palette("husl", K_true)
+        
+        # Plot per-class accuracy (diagonal of confusion matrix)
+        for class_idx in range(K_true):
+            per_class_acc = df[f'conf_norm_{class_idx}_{class_idx}']
+            ax.plot(df['n'], per_class_acc, marker='o', linewidth=2.5, 
+                   markersize=8, label=f'Class {class_idx}', color=colors[class_idx])
+        
+        ax.set_xlabel('Sample Size (n)', fontsize=14, fontweight='bold')
+        ax.set_ylabel('Per-Class Accuracy', fontsize=14, fontweight='bold')
+        ax.set_title(f'Per-Class Accuracy vs Sample Size (K_true = {K_true})', 
+                    fontsize=16, fontweight='bold')
+        ax.legend(fontsize=12)
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim([0, 1.05])
+        
+        plt.tight_layout()
+        
+        if save_figures:
+            save_path = f"simulation/results/figures/per_class_accuracy_K{K_true}.png"
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  ✓ Per-class accuracy for K={K_true} saved to: {save_path}")
+        
+        plt.show()
+
 
 def generate_all_plots_and_tables():
     """Generate all plots and tables."""
@@ -430,6 +591,11 @@ def generate_all_plots_and_tables():
     plot_bic_success_rates_combined(save_figures=True)
     plot_parameter_estimation_errors(save_figures=True)
     plot_computation_time_analysis(save_figures=True)
+    
+    # NEW: Confusion matrix plots
+    plot_confusion_matrices_by_sample_size(save_figures=True)
+    plot_classification_accuracy(save_figures=True)
+    plot_per_class_accuracy(save_figures=True)
     
     # Generate tables
     create_summary_tables(save_tables=True)
@@ -453,7 +619,7 @@ def main():
     parser.add_argument(
         '--plot',
         type=str,
-        choices=['bic', 'estimation', 'time', 'all'],
+        choices=['bic', 'estimation', 'time', 'confusion', 'all'],
         default='all',
         help='Which plots to generate (default: all)'
     )
@@ -477,6 +643,10 @@ def main():
             plot_parameter_estimation_errors(save_figures=save_figs)
         elif args.plot == 'time':
             plot_computation_time_analysis(save_figures=save_figs)
+        elif args.plot == 'confusion':
+            plot_confusion_matrices_by_sample_size(save_figures=save_figs)
+            plot_classification_accuracy(save_figures=save_figs)
+            plot_per_class_accuracy(save_figures=save_figs)
         
         create_summary_tables(save_tables=save_figs)
 
