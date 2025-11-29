@@ -146,6 +146,8 @@ SIMULATION_CONFIG = {
 
 ## Key Features
 
+- Automatic model fitting and selection for user-provided data
+
 ### Optimizations
 - Fully vectorized EM
 - Parallel initialization across cores
