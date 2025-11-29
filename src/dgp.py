@@ -1,5 +1,6 @@
 """
 Data Generating Processes (DGPs) for synthetic categorical data.
+Vectorized implementation for faster data generation.
 """
 
 import numpy as np
@@ -13,6 +14,8 @@ class LatentClassDGP:
     
     The true model is:
     P(X = x) = Σ_k π_k ∏_r P(X^(r) = x^(r) | H = k)
+    
+    Uses vectorized operations for efficient data generation.
     """
     
     def __init__(self, 
@@ -63,7 +66,7 @@ class LatentClassDGP:
     
     def _generate_mixture_weights(self) -> np.ndarray:
         """
-        Generate random mixture weights that sum to 1.
+        Generate random mixture weights that sum to 1 using Dirichlet distribution.
         
         Returns
         -------
@@ -106,6 +109,8 @@ class LatentClassDGP:
         """
         Generate synthetic data from the latent class model.
         
+        VECTORIZED implementation for faster generation.
+        
         Parameters
         ----------
         n : int
@@ -118,20 +123,31 @@ class LatentClassDGP:
         H : np.ndarray, shape (n,)
             True latent class assignments
         """
-        # Sample latent classes
+        # Sample latent classes (already vectorized)
         H = self.rng.choice(self.K, size=n, p=self.pi)
         
         # Initialize data matrix
         X = np.zeros((n, self.m), dtype=int)
         
-        # For each sample, generate observed variables based on latent class
-        for i in range(n):
-            k = H[i]
-            for r in range(self.m):
-                # Get probabilities for this class and variable
-                probs = self.theta[k, r, :self.categories[r]]
-                # Sample category
-                X[i, r] = self.rng.choice(self.categories[r], p=probs)
+        # VECTORIZED generation: for each variable, generate all samples at once
+        for r in range(self.m):
+            C_r = self.categories[r]
+            
+            # Get probabilities for all samples for this variable
+            # theta[H, r, :C_r] extracts probabilities for each sample's class
+            # Shape: (n, C_r)
+            probs_r = self.theta[H, r, :C_r]
+            
+            # Vectorized categorical sampling using inverse transform sampling
+            # Compute cumulative probabilities
+            cumsum = np.cumsum(probs_r, axis=1)
+            
+            # Generate uniform random numbers
+            u = self.rng.random(n)[:, None]  # Shape: (n, 1)
+            
+            # Find first index where cumsum >= u for each sample
+            # This is equivalent to categorical sampling
+            X[:, r] = np.argmax(u < cumsum, axis=1)
         
         return X, H
     
