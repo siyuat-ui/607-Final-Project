@@ -17,6 +17,8 @@ This package implements a **latent class model for multivariate categorical data
 
 **Methodology:** See `docs/methodology.pdf`
 
+For a self-contained example, see `demo/latent_class_demo.ipynb`. We recommend reading `docs/methodology.pdf` before diving into the notebook.
+
 ---
 
 ## Quick Start
@@ -102,16 +104,19 @@ If you plan to use Makefile commands, we recommend that you first display all av
 │   ├── visualization.py            # Plotting
 │   └── utils.py                    # Helper functions
 ├── simulation/                     # Validation studies
+│   ├── simulation_utils.py         # Helper functions for simulation studies
 │   ├── run_simulations.py          # Run simulations
 │   ├── analyze_results.py          # Generate plots
 │   └── results/                    # Outputs
 ├── main.py                         # Main pipeline
 ├── docs/                           # Documents
 │   ├── presentation.pdf
-│   ├── methodology.pdf             
+│   └── methodology.pdf             
+├── demo/
+│   └── latent_class_demo.ipynb     # A self-contained example
 ├── README.md                       # This file
-└── report-Tang.pdf                 # Project report
-├── Makefile                        # Makefile commands
+├── report-Tang.pdf                 # Project report
+└── Makefile                        # Makefile commands
 ```
 
 ---
@@ -194,5 +199,6 @@ SIMULATION_CONFIG = {
 ## Documentation
 
 - **Methodology:** `docs/methodology.pdf`
+- **A Self-contained Example:** `demo/latent_class_demo.ipynb`
 - **Project Report:** `docs/report-Tang.pdf`
 - **In-class Presentation Slides:** `docs/presentation.pdf`
