@@ -37,6 +37,8 @@ For my methodology of latent class modeling, see `docs/methodology.pdf`.
 **3. Visualization**
 - BIC curves, parameter error plots, confusion matrices, accuracy trends
 
+**4. Makefile**
+
 ### Course Concepts Used
 
 **Vectorization:** Eliminated nested loops using NumPy broadcasting
@@ -49,7 +51,9 @@ For my methodology of latent class modeling, see `docs/methodology.pdf`.
 
 **Simulation Studies:** Structured Monte Carlo framework for validation
 
-**Progress tracking**: via tqdm
+**Progress Tracking**: via tqdm
+
+**Makefile Commands**
 
 **Software Engineering:** Modular design, CLI interfaces, comprehensive documentation
 
