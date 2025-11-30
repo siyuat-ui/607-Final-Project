@@ -196,6 +196,8 @@ SIMULATION_CONFIG = {
 - Classification accuracy trends
 - Computation time analysis
 
+---
+
 ## Documentation
 
 - **Methodology:** `docs/methodology.pdf`
