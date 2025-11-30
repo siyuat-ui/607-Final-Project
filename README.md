@@ -13,6 +13,7 @@ This package implements a **latent class model for multivariate categorical data
 - Vectorized EM algorithm
 - Parallel processing across initializations and $K$ values ($K$ = # latent classes)
 - Comprehensive simulation validation
+- Makefile commands
 
 **Methodology:** See `docs/methodology.pdf`
 
@@ -57,6 +58,36 @@ python simulation/analyze_results.py
 
 Please note that it takes 40-50 minutes if you run the default simulation configuration.
 
+### Makefile Commands
+
+We also provide a Makefile to simplify common tasks. 
+
+```bash
+# Show help
+make help
+
+# Run full simulation study (with confirmation prompt)
+make simulate
+
+# Clean simulation results
+make clean-sim
+
+# Analyze user data
+make analyze DATA=data/mydata.csv PREFIX=my_analysis
+
+# Generate synthetic data
+make synthetic N=2000 K=3
+
+# Clean results matching prefix
+make clean-results PREFIX=my_analysis
+make clean-results PREFIX=analysis
+
+# Clean everything
+make clean-all
+```
+
+If you plan to use Makefile commands, we recommend that you first display all available commands with usage examples by running `make help`.
+
 ---
 
 ## Project Structure
@@ -80,6 +111,7 @@ Please note that it takes 40-50 minutes if you run the default simulation config
 │   ├── methodology.pdf             
 ├── README.md                       # This file
 └── report-Tang.pdf                 # Project report
+├── Makefile                        # Makefile commands
 ```
 
 ---
